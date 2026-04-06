@@ -1,16 +1,22 @@
 export default function TaskItem({ task, onDelete, onToggle }) {
   return (
-    <li style={{ borderBottom: "1px solid #ccc", padding: "10px 0" }}>
+    <li className="task-card">
+      <button
+        type="button"
+        className={`btn btn-toggle ${task.completed ? "is-active" : ""}`}
+        onClick={() => onToggle(task.id, !task.completed)}
+      >
+        {task.completed ? "Hecha" : "Pendiente"}
+      </button>
+
       <span
-        style={{
-          textDecoration: task.completed ? "line-through" : "none",
-          cursor: "pointer",
-        }}
+        className={`task-title ${task.completed ? "is-completed" : ""}`}
         onClick={() => onToggle(task.id, !task.completed)}
       >
         {task.title}
       </span>
-      <button onClick={() => onDelete(task.id)} style={{ marginLeft: "10px" }}>
+
+      <button type="button" className="btn btn-danger" onClick={() => onDelete(task.id)}>
         Eliminar
       </button>
     </li>
