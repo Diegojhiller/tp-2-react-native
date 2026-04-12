@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import TaskList from "./components/TaskList";
 import TaskForm from "./components/TaskForm";
-
-const API_BASE = "/api/tasks";
+import {
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask as deleteTaskRequest,
+} from "./api/taskApi";
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -10,18 +14,17 @@ export default function App() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
 
-  // Consumo de API (GET) 
+  // Cargar tareas desde la API
   const fetchTasks = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(API_BASE);
-      if (!res.ok) throw new Error("Error al conectar");
-      const data = await res.json();
+      const data = await getTasks();
       setTasks(data);
     } catch (err) {
-      setError(err.message); // Mostrar errores 
+      setError(err.message);
     } finally {
-      setLoading(false); // Mostrar estado de carga 
+      setLoading(false);
     }
   };
 
@@ -29,27 +32,38 @@ export default function App() {
     fetchTasks();
   }, []);
 
-  // Función para Eliminar (DELETE) 
+  // Crear tarea
+  const handleCreateTask = async (title) => {
+    setError(null);
+    await createTask(title);
+    await fetchTasks();
+  };
+
+  // Eliminar tarea
   const deleteTask = async (id) => {
-    await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
-    setTasks(tasks.filter((t) => t.id !== id));
+    setError(null);
+    try {
+      await deleteTaskRequest(id);
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  // Función para Actualizar (PUT) 
+  // Cambiar estado completada/pendiente
   const toggleTask = async (id, completedStatus) => {
-    await fetch(`${API_BASE}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: completedStatus }),
-    });
-    setTasks(
-      tasks.map((t) =>
-        t.id === id ? { ...t, completed: completedStatus } : t,
-      ),
-    );
+    setError(null);
+    try {
+      const updatedTask = await updateTask(id, { completed: completedStatus });
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => (t.id === id ? updatedTask : t)),
+      );
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  // Filtrado o búsqueda 
+  // Filtrado o búsqueda
   const filteredTasks = tasks.filter((t) =>
     t.title.toLowerCase().includes(search.toLowerCase()),
   );
@@ -59,15 +73,20 @@ export default function App() {
       <main className="container mx-auto max-w-2xl">
         <section className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 animate-fade-in">
           <header className="mb-5 border-b border-slate-100 pb-4">
-            <h1 className="text-3xl font-black text-slate-900">Gestión de Tareas</h1>
+            <h1 className="text-3xl font-black text-slate-900">
+              Gestión de Tareas
+            </h1>
             <p className="mt-1 text-sm text-slate-500">
               Organizá tu día con una vista limpia y rápida.
             </p>
           </header>
 
-          <TaskForm onTaskCreated={fetchTasks} />
+          <TaskForm onCreateTask={handleCreateTask} onError={setError} />
 
-          <label className="mt-4 block text-sm font-semibold text-slate-700" htmlFor="searchTasks">
+          <label
+            className="mt-4 block text-sm font-semibold text-slate-700"
+            htmlFor="searchTasks"
+          >
             Buscar tarea
           </label>
           <input
@@ -79,7 +98,9 @@ export default function App() {
           />
 
           {loading ? (
-            <p className="mt-5 rounded-xl bg-slate-100 px-4 py-3 text-slate-600">Cargando...</p>
+            <p className="mt-5 rounded-xl bg-slate-100 px-4 py-3 text-slate-600">
+              Cargando...
+            </p>
           ) : (
             <TaskList
               tasks={filteredTasks}
