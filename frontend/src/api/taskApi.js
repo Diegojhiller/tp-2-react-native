@@ -1,7 +1,13 @@
-const API_BASE = "/api/tasks";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/tasks";
 
 async function apiRequest(url, options = {}) {
-  const response = await fetch(url, options);
+  let response;
+
+  try {
+    response = await fetch(url, options);
+  } catch {
+    throw new Error("No se pudo conectar con el servidor. Verifica que el backend este corriendo en el puerto 3000.");
+  }
 
   if (!response.ok) {
     let message = "Ocurrio un error en la solicitud";

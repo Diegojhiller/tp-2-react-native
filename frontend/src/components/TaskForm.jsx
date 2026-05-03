@@ -1,24 +1,41 @@
 import { useState } from "react";
+import { useTasks } from "../context/TaskContext";
 
-export default function TaskForm({ onCreateTask, onError }) {
+/**
+ * TaskForm - Formulario para crear nuevas tareas
+ * ==============================================
+ * Responsabilidades:
+ * 1. Maneja estado LOCAL del input (el texto que escribe el usuario)
+ * 2. Valida que el título no esté vacío
+ * 3. Usa addTask() del contexto para crear la tarea en la API
+ * 4. Limpia el input después de crear
+ * 5. Usa setErrorMessage() del contexto para mostrar errores globales
+ *
+ * Flow:
+ * Usuario escribe -> onChange actualiza estado local
+ * -> Submit valida -> addTask() llama API -> reducer actualiza estado global
+ * -> App se re-renderiza con la tarea nueva
+ */
+export default function TaskForm() {
   const [title, setTitle] = useState("");
+  const { addTask, clearError, setErrorMessage } = useTasks();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const normalizedTitle = title.trim();
 
     if (!normalizedTitle) {
-      onError("El titulo es obligatorio");
+      setErrorMessage("El titulo es obligatorio");
       return;
     }
 
-    onError(null);
+    clearError();
 
     try {
-      await onCreateTask(normalizedTitle);
+      await addTask(normalizedTitle);
       setTitle("");
-    } catch (err) {
-      onError(err.message);
+    } catch {
+      return;
     }
   };
 

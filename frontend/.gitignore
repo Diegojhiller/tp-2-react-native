@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+GUIA_PEDAGOGICA.md
+QUICK_REFERENCE.md
+RESUMEN_CAMBIOS.md
+
 
 # Editor directories and files
 .vscode/*

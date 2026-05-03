@@ -1,69 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import TaskList from "./components/TaskList";
 import TaskForm from "./components/TaskForm";
-import {
-  getTasks,
-  createTask,
-  updateTask,
-  deleteTask as deleteTaskRequest,
-} from "./api/taskApi";
+import { useTasks } from "./context/TaskContext";
 
+/**
+ * App - Componente raíz de la aplicación
+ * =======================================
+ * Responsabilidades:
+ * 1. Lee estado de tareas desde el contexto global (useTasks)
+ * 2. Maneja el estado LOCAL del filtro de búsqueda
+ * 3. Renderiza TaskForm (agregar tareas) y TaskList (mostrar tareas filtradas)
+ * 4. Muestra loading y errores globales
+ *
+ * Nota: Ya NO maneja estado de tareas aquí, solo lo consume del contexto.
+ * Esto hace el código más limpio y mantenible.
+ */
 export default function App() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  /**
+   * Consumir el contexto global
+   * ===========================
+   * Aquí accedemos al estado compartido del contexto:
+   * - tasks: lista de todas las tareas
+   * - loading: boolean que indica si está cargando desde la API
+   * - error: mensaje de error si algo falla
+   *
+   * Cuando cualquier componente (TaskForm, TaskItem) modifica esto
+   * a través del contexto, App automáticamente se re-renderiza
+   * y actualiza la UI.
+   */
+  const {
+    state: { tasks, loading, error },
+  } = useTasks();
+
+  /**
+   * Estado LOCAL de búsqueda
+   * =======================
+   * El filtro de búsqueda es LOCAL porque no afecta el servidor,
+   * solo a qué se muestra en la UI.
+   * No forma parte del contexto global, cada App tiene su propio filtro.
+   */
   const [search, setSearch] = useState("");
 
-  // Cargar tareas desde la API
-  const fetchTasks = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getTasks();
-      setTasks(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  // Crear tarea
-  const handleCreateTask = async (title) => {
-    setError(null);
-    await createTask(title);
-    await fetchTasks();
-  };
-
-  // Eliminar tarea
-  const deleteTask = async (id) => {
-    setError(null);
-    try {
-      await deleteTaskRequest(id);
-      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  // Cambiar estado completada/pendiente
-  const toggleTask = async (id, completedStatus) => {
-    setError(null);
-    try {
-      const updatedTask = await updateTask(id, { completed: completedStatus });
-      setTasks((prevTasks) =>
-        prevTasks.map((t) => (t.id === id ? updatedTask : t)),
-      );
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  // Filtrado o búsqueda
+  /**
+   * Filtrado local: busca en el título de tareas
+   * Esto ocurre cada vez que 'tasks' o 'search' cambian.
+   */
   const filteredTasks = tasks.filter((t) =>
     t.title.toLowerCase().includes(search.toLowerCase()),
   );
@@ -81,7 +62,7 @@ export default function App() {
             </p>
           </header>
 
-          <TaskForm onCreateTask={handleCreateTask} onError={setError} />
+          <TaskForm />
 
           <label
             className="mt-4 block text-sm font-semibold text-slate-700"
@@ -102,11 +83,7 @@ export default function App() {
               Cargando...
             </p>
           ) : (
-            <TaskList
-              tasks={filteredTasks}
-              onDelete={deleteTask}
-              onToggle={toggleTask}
-            />
+            <TaskList tasks={filteredTasks} />
           )}
 
           {error && (
