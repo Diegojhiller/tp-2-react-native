@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useReducer } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+} from "react";
 import {
   getTasks,
   createTask,
@@ -6,47 +13,14 @@ import {
   deleteTask as deleteTaskRequest,
 } from "../api/taskApi";
 
-/**
- * TaskContext
- * =============
- * Contexto global que almacena todo el estado de tareas.
- * Actúa como un "contenedor" donde todos los componentes pueden acceder
- * al estado sin necesidad de prop drilling.
- *
- * Qué contiene:
- * - tasks: lista de todas las tareas
- * - loading: booleano que indica si está cargando desde el servidor
- * - error: mensaje de error si algo falla
- */
 const TaskContext = createContext(null);
 
-/**
- * Estado inicial de todas las tareas
- * =================================
- * Cuando la app arranca, el estado empieza vacío.
- * Mientras se cargan datos del servidor, loading es true.
- * Si falla algo, error guarda el mensaje.
- */
 const initialState = {
   tasks: [],
   loading: false,
   error: null,
 };
 
-/**
- * taskReducer - La máquina de estado predictible
- * ================================================
- * Esta es la ÚNICA función que puede cambiar el estado.
- * Recibe el estado actual y una acción, devuelve el estado nuevo.
- *
- * Patrones:
- * - SET_LOADING: usamos cuando comienza/termina una operación
- * - SET_ERROR: guardamos errores para mostrar en la UI
- * - SET_TASKS: reemplazamos toda la lista (ej: al cargar inicialmente)
- * - ADD_TASK: agregamos tarea nueva a la lista
- * - EDIT_TASK: buscamos por ID y reemplazamos esa tarea
- * - DELETE_TASK: filtramos para remover por ID
- */
 function taskReducer(state, action) {
   switch (action.type) {
     case "SET_LOADING":
@@ -74,22 +48,11 @@ function taskReducer(state, action) {
   }
 }
 
-/**
- * TaskProvider - El proveedor de estado global
- * ============================================
- * Este componente:
- * 1. Maneja el estado de tareas con useReducer
- * 2. Define funciones async que conectan con la API
- * 3. Dispara acciones al reducer después de cada respuesta del servidor
- * 4. Expone todo via useContext para que otros componentes lo consuman
- *
- * Ventaja: cambios en estado fluyen automáticamente a todos los componentes
- * que usen useContext(TaskContext).
- */
 export function TaskProvider({ children }) {
   const [state, dispatch] = useReducer(taskReducer, initialState);
-
-  const fetchTasks = async () => {
+  //useCallback memoriza funciones
+  // useCallback mantiene estables las referencias de acciones y se recomienda para evitar renders extra en consumidores del contexto.
+  const fetchTasks = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "SET_ERROR", payload: null });
 
@@ -101,9 +64,9 @@ export function TaskProvider({ children }) {
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
-  };
+  }, []);
 
-  const addTask = async (title) => {
+  const addTask = useCallback(async (title) => {
     dispatch({ type: "SET_ERROR", payload: null });
 
     try {
@@ -113,9 +76,9 @@ export function TaskProvider({ children }) {
       dispatch({ type: "SET_ERROR", payload: err.message });
       throw err;
     }
-  };
+  }, []);
 
-  const editTask = async (id, payload) => {
+  const editTask = useCallback(async (id, payload) => {
     dispatch({ type: "SET_ERROR", payload: null });
 
     try {
@@ -125,9 +88,9 @@ export function TaskProvider({ children }) {
       dispatch({ type: "SET_ERROR", payload: err.message });
       throw err;
     }
-  };
+  }, []);
 
-  const removeTask = async (id) => {
+  const removeTask = useCallback(async (id) => {
     dispatch({ type: "SET_ERROR", payload: null });
 
     try {
@@ -137,39 +100,47 @@ export function TaskProvider({ children }) {
       dispatch({ type: "SET_ERROR", payload: err.message });
       throw err;
     }
-  };
+  }, []);
 
-  const setErrorMessage = (message) =>
-    dispatch({ type: "SET_ERROR", payload: message });
+  const setErrorMessage = useCallback(
+    (message) => dispatch({ type: "SET_ERROR", payload: message }),
+    [],
+  );
 
-  const clearError = () => dispatch({ type: "SET_ERROR", payload: null });
+  const clearError = useCallback(
+    () => dispatch({ type: "SET_ERROR", payload: null }),
+    [],
+  );
 
   useEffect(() => {
     fetchTasks();
-  }, []);
-
-  const value = {
-    state,
-    fetchTasks,
-    addTask,
-    editTask,
-    removeTask,
-    setErrorMessage,
-    clearError,
-  };
+  }, [fetchTasks]);
+  //useMemo memoriza valores
+  // useMemo evita recrear el objeto value en cada render y se recomienda en providers para reducir renders innecesarios.
+  const value = useMemo(
+    () => ({
+      state,
+      fetchTasks,
+      addTask,
+      editTask,
+      removeTask,
+      setErrorMessage,
+      clearError,
+    }),
+    [
+      state,
+      fetchTasks,
+      addTask,
+      editTask,
+      removeTask,
+      setErrorMessage,
+      clearError,
+    ],
+  );
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
 }
 
-/**
- * useTasks - Hook personalizado para acceder al contexto
- * ======================================================
- * Cada componente que necesite estado/acciones de tareas hace:
- *   const { state, addTask, editTask, removeTask } = useTasks();
- *
- * El error que lanza aquí es una guardrail: si alguien usa este hook
- * fuera de TaskProvider, sabrá de inmediato que algo está mal.
- */
 export function useTasks() {
   const context = useContext(TaskContext);
 

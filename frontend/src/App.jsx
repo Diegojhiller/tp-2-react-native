@@ -1,52 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import TaskList from "./components/TaskList";
 import TaskForm from "./components/TaskForm";
 import { useTasks } from "./context/TaskContext";
 
-/**
- * App - Componente raíz de la aplicación
- * =======================================
- * Responsabilidades:
- * 1. Lee estado de tareas desde el contexto global (useTasks)
- * 2. Maneja el estado LOCAL del filtro de búsqueda
- * 3. Renderiza TaskForm (agregar tareas) y TaskList (mostrar tareas filtradas)
- * 4. Muestra loading y errores globales
- *
- * Nota: Ya NO maneja estado de tareas aquí, solo lo consume del contexto.
- * Esto hace el código más limpio y mantenible.
- */
 export default function App() {
-  /**
-   * Consumir el contexto global
-   * ===========================
-   * Aquí accedemos al estado compartido del contexto:
-   * - tasks: lista de todas las tareas
-   * - loading: boolean que indica si está cargando desde la API
-   * - error: mensaje de error si algo falla
-   *
-   * Cuando cualquier componente (TaskForm, TaskItem) modifica esto
-   * a través del contexto, App automáticamente se re-renderiza
-   * y actualiza la UI.
-   */
   const {
     state: { tasks, loading, error },
   } = useTasks();
 
-  /**
-   * Estado LOCAL de búsqueda
-   * =======================
-   * El filtro de búsqueda es LOCAL porque no afecta el servidor,
-   * solo a qué se muestra en la UI.
-   * No forma parte del contexto global, cada App tiene su propio filtro.
-   */
   const [search, setSearch] = useState("");
 
-  /**
-   * Filtrado local: busca en el título de tareas
-   * Esto ocurre cada vez que 'tasks' o 'search' cambian.
-   */
-  const filteredTasks = tasks.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase()),
+  // useMemo evita recalcular el filtro en renders sin cambios en tasks/search y se recomienda cuando el cálculo puede repetirse mucho.
+  const filteredTasks = useMemo(
+    () =>
+      tasks.filter((t) => t.title.toLowerCase().includes(search.toLowerCase())),
+    [tasks, search],
   );
 
   return (
